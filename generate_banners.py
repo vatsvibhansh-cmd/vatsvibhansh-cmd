@@ -2,77 +2,107 @@ import os
 import numpy as np
 from PIL import Image, ImageOps, ImageFilter, ImageEnhance
 
-def process_portrait_paths(img_path):
+def generate_banners():
+    img_path = r"C:\Users\Vibhansh Vats\.gemini\antigravity-ide\brain\91a6552c-a66b-4da4-a6d8-de676ebfd8c1\.user_uploaded\media_1787081387643.jpg"
     img = Image.open(img_path).convert('RGB')
-    width, height = img.size
+    w, h = img.size
     
-    # Head and shoulders crop: top 5% to 85%, center horizontal
+    # Head and shoulders crop (top 0% to 80%)
     crop_aspect = 300 / 340
-    img_aspect = width / height
+    img_aspect = w / h
     
     if img_aspect > crop_aspect:
-        new_width = int(height * crop_aspect)
-        left = (width - new_width) // 2
-        img = img.crop((left, 0, left + new_width, height))
+        new_w = int(h * crop_aspect)
+        left = (w - new_w) // 2
+        img = img.crop((left, 0, left + new_w, h))
     else:
-        new_height = int(width / crop_aspect)
-        top = int((height - new_height) * 0.05)
-        img = img.crop((0, top, width, top + new_height))
+        new_h = int(w / crop_aspect)
+        img = img.crop((0, 0, w, new_h))
         
     img = img.resize((300, 340), Image.Resampling.LANCZOS)
     
-    # Contrast 1.3x only, with autocontrast(cutoff=1) + UnsharpMask(radius=3, percent=140)
+    # Precise Person Silhouette Mask (Head + Neck + Shoulders + Torso)
+    mask = np.zeros((340, 300), dtype=bool)
+    for y in range(340):
+        for x in range(300):
+            # Head & Hair ellipse (centered x=148, y=115)
+            head_dist = ((x - 148) / 78)**2 + ((y - 115) / 88)**2
+            # Neck & Chest (centered x=148, y=190)
+            neck_dist = ((x - 148) / 70)**2 + ((y - 190) / 60)**2
+            # Torso & Shoulders (centered x=148, y=275)
+            body_dist = ((x - 148) / 142)**2 + ((y - 275) / 85)**2
+            
+            if head_dist <= 1.0 or neck_dist <= 1.0 or body_dist <= 1.0:
+                mask[y, x] = True
+                
+    # Hard-clear border margins
+    mask[0:12, :] = False
+    mask[330:340, :] = False
+    mask[:, 0:8] = False
+    mask[:, 292:300] = False
+
+    # Image enhancement per spec:
+    # autocontrast(cutoff=1) + UnsharpMask(radius=3, percent=140) + Contrast 1.3x
     gray = ImageOps.autocontrast(img.convert('L'), cutoff=1)
     gray = gray.filter(ImageFilter.UnsharpMask(radius=3, percent=140))
-    enhancer = ImageEnhance.Contrast(gray)
-    gray = enhancer.enhance(1.3)
-    
-    img_np = np.array(gray, dtype=np.float32)
-    
-    # Background thresholding / segmentation for dark mode
-    # Create mask for dark mode subject background removal
-    h, w = img_np.shape
-    mask = np.ones((h, w), dtype=bool)
-    
-    # Perform 1-bit Floyd-Steinberg dithering in serpentine order
-    def dither(arr, invert=False):
-        data = arr.copy()
-        out = np.zeros((h, w), dtype=np.uint8)
-        for y in range(h):
-            x_range = range(w) if y % 2 == 0 else range(w - 1, -1, -1)
+    gray = ImageEnhance.Contrast(gray).enhance(1.35)
+    gray_np = np.array(gray, dtype=np.float32)
+
+    # Floyd-Steinberg Dither with Hard-Cleared Error Diffusion Bleed at Mask Border
+    def dither_segmented(image_data, is_dark_mode=True):
+        h_g, w_g = image_data.shape
+        data = image_data.copy()
+        out = np.zeros((h_g, w_g), dtype=np.uint8)
+        
+        for y in range(h_g):
+            x_range = range(w_g) if y % 2 == 0 else range(w_g - 1, -1, -1)
             direction = 1 if y % 2 == 0 else -1
+            
             for x in x_range:
+                if not mask[y, x]:
+                    # Hard-clear background (no dot & zero error diffusion)
+                    out[y, x] = 0
+                    continue
+                    
                 old_v = data[y, x]
-                new_v = 255 if old_v > 128 else 0
+                # In dark mode, draw white dots on lit regions
+                # In light mode, draw dark dots on shaded regions
+                threshold = 120 if is_dark_mode else 135
+                new_v = 255 if old_v > threshold else 0
                 out[y, x] = new_v
                 err = old_v - new_v
-                if 0 <= x + direction < w:
+                
+                # Propagate error ONLY to adjacent mask pixels (hard-clear boundary bleed)
+                if 0 <= x + direction < w_g and mask[y, x + direction]:
                     data[y, x + direction] += err * (7.0 / 16.0)
-                if y + 1 < h:
-                    if 0 <= x - direction < w:
+                if y + 1 < h_g:
+                    if 0 <= x - direction < w_g and mask[y + 1, x - direction]:
                         data[y + 1, x - direction] += err * (3.0 / 16.0)
-                    data[y + 1, x] += err * (5.0 / 16.0)
-                    if 0 <= x + direction < w:
+                    if mask[y + 1, x]:
+                        data[y + 1, x] += err * (5.0 / 16.0)
+                    if 0 <= x + direction < w_g and mask[y + 1, x + direction]:
                         data[y + 1, x + direction] += err * (1.0 / 16.0)
+                        
         return out
 
-    # Dark mode dither (dots draw lit subject)
-    dark_matrix = dither(255 - gray_arr)
-    # Light mode dither (dots draw dark parts)
-    light_matrix = dither(gray_arr)
+    # Dark mode: subject lit pixels draw dots
+    dark_matrix = dither_segmented(gray_np, is_dark_mode=True)
+    # Light mode: subject shadow/contour pixels draw dots
+    light_matrix = dither_segmented(255.0 - gray_np, is_dark_mode=False)
 
-    def to_path(matrix, scale_x=1.16, scale_y=1.16, offset_x=55, offset_y=112, draw_white=True):
+    # Convert binary matrix to SVG path run-lengths
+    def matrix_to_svg_paths(matrix, scale_x=1.16, scale_y=1.16, offset_x=55, offset_y=112):
         path_runs = []
-        target = 255 if draw_white else 0
-        for y in range(h):
+        h_m, w_m = matrix.shape
+        for y in range(h_m):
             in_run = False
             start_x = 0
-            for x in range(w):
-                is_match = (matrix[y, x] == target)
-                if is_match and not in_run:
+            for x in range(w_m):
+                is_dot = (matrix[y, x] == 255)
+                if is_dot and not in_run:
                     in_run = True
                     start_x = x
-                elif not is_match and in_run:
+                elif not is_dot and in_run:
                     in_run = False
                     run_len = x - start_x
                     px = offset_x + start_x * scale_x
@@ -80,70 +110,48 @@ def process_portrait_paths(img_path):
                     pw = run_len * scale_x
                     path_runs.append(f"M {px:.1f} {py:.1f} h {pw:.1f}")
             if in_run:
-                run_len = w - start_x
+                run_len = w_m - start_x
                 px = offset_x + start_x * scale_x
                 py = offset_y + y * scale_y
                 pw = run_len * scale_x
                 path_runs.append(f"M {px:.1f} {py:.1f} h {pw:.1f}")
         return " ".join(path_runs)
 
-    dark_path = to_path(dark_matrix, draw_white=True)
-    light_path = to_path(light_matrix, draw_white=False)
-    
-    return dark_path, light_path
+    dark_portrait_path = matrix_to_svg_paths(dark_matrix)
+    light_portrait_path = matrix_to_svg_paths(light_matrix)
 
-img_path = r"C:\Users\Vibhansh Vats\.gemini\antigravity-ide\brain\91a6552c-a66b-4da4-a6d8-de676ebfd8c1\.user_uploaded\media_1787081387643.jpg"
+    def build_svg(is_dark=True):
+        bg_color = '#0A101F' if is_dark else '#FAFAFA'
+        term_bg = '#0D1527' if is_dark else '#FFFFFF'
+        border_color = '#1E293B' if is_dark else '#CBD5E1'
+        chrome_color = '#22D3EE' if is_dark else '#0891B2'
+        label_color = '#94A3B8' if is_dark else '#64748B'
+        val_color = '#F8FAFC' if is_dark else '#0F172A'
+        accent_color = '#10B981' if is_dark else '#059669'
+        purple_accent = '#A78BFA' if is_dark else '#7C3AED'
+        dot_leader_color = '#1E293B' if is_dark else '#E2E8F0'
+        panel_bg = '#070D18' if is_dark else '#F1F5F9'
+        
+        portrait_path = dark_portrait_path if is_dark else light_portrait_path
 
-# Global array calculation for helper
-img_tmp = Image.open(img_path).convert('RGB')
-w_t, h_t = img_tmp.size
-crop_aspect = 300 / 340
-img_aspect = w_t / h_t
-if img_aspect > crop_aspect:
-    new_w = int(h_t * crop_aspect)
-    left = (w_t - new_w) // 2
-    img_tmp = img_tmp.crop((left, 0, left + new_w, h_t))
-else:
-    new_h = int(w_t / crop_aspect)
-    top = int((h_t - new_h) * 0.05)
-    img_tmp = img_tmp.crop((0, top, w_t, top + new_h))
-img_tmp = img_tmp.resize((300, 340), Image.Resampling.LANCZOS)
-gray_arr = np.array(ImageEnhance.Contrast(ImageOps.autocontrast(img_tmp.convert('L'), cutoff=1).filter(ImageFilter.UnsharpMask(radius=3, percent=140))).enhance(1.3), dtype=np.float32)
+        rows = [
+            ('Subject', 'Vibhansh Vats', val_color),
+            ('Role', 'Data Scientist & ML Engineer', purple_accent),
+            ('Origin', 'India', val_color),
+            ('Education', 'Computer Science & Data Analytics', val_color),
+            ('Status', 'Training Models + Analyzing Data + Shipping AI', accent_color),
+            ('ToolChain', 'Python · PyTorch · Scikit-Learn · SQL · Jupyter', chrome_color),
+            ('Core.Lang', 'Python · SQL · R · C++ · Julia', val_color),
+            ('Core.ML', 'PyTorch · TensorFlow · Scikit-Learn · XGBoost', purple_accent),
+            ('Core.Data', 'Pandas · NumPy · SciPy · Apache Spark', val_color),
+            ('Core.Viz', 'Matplotlib · Seaborn · Plotly · Tableau', chrome_color),
+            ('Grid.Mail', 'vatsvibhansh@gmail.com', val_color),
+            ('Grid.Portfolio', 'github.com/vatsvibhansh-cmd', val_color),
+            ('Grid.LinkedIn', 'linkedin.com/in/vibhansh-vats-729935279', chrome_color),
+            ('Grid.GitHub', 'github.com/vatsvibhansh-cmd', purple_accent),
+        ]
 
-dark_portrait_path, light_portrait_path = process_portrait_paths(img_path)
-
-def generate_banner(is_dark=True):
-    bg_color = '#0A101F' if is_dark else '#FAFAFA'
-    term_bg = '#0D1527' if is_dark else '#FFFFFF'
-    border_color = '#1E293B' if is_dark else '#CBD5E1'
-    chrome_color = '#22D3EE' if is_dark else '#0891B2'
-    label_color = '#94A3B8' if is_dark else '#64748B'
-    val_color = '#F8FAFC' if is_dark else '#0F172A'
-    accent_color = '#10B981' if is_dark else '#059669'
-    purple_accent = '#A78BFA' if is_dark else '#7C3AED'
-    dot_leader_color = '#1E293B' if is_dark else '#E2E8F0'
-    panel_bg = '#070D18' if is_dark else '#F1F5F9'
-    
-    portrait_path = dark_portrait_path if is_dark else light_portrait_path
-    
-    rows = [
-        ('Subject', 'Vibhansh Vats', val_color),
-        ('Role', 'Data Scientist & ML Engineer', purple_accent),
-        ('Origin', 'India', val_color),
-        ('Education', 'Computer Science & Data Analytics', val_color),
-        ('Status', 'Training Models + Analyzing Data + Shipping AI', accent_color),
-        ('ToolChain', 'Python · PyTorch · Scikit-Learn · SQL · Jupyter', chrome_color),
-        ('Core.Lang', 'Python · SQL · R · C++ · Julia', val_color),
-        ('Core.ML', 'PyTorch · TensorFlow · Scikit-Learn · XGBoost', purple_accent),
-        ('Core.Data', 'Pandas · NumPy · SciPy · Apache Spark', val_color),
-        ('Core.Viz', 'Matplotlib · Seaborn · Plotly · Tableau', chrome_color),
-        ('Grid.Mail', 'vatsvibhansh@gmail.com', val_color),
-        ('Grid.Portfolio', 'github.com/vatsvibhansh-cmd', val_color),
-        ('Grid.LinkedIn', 'linkedin.com/in/vibhansh-vats-729935279', chrome_color),
-        ('Grid.GitHub', 'github.com/vatsvibhansh-cmd', purple_accent),
-    ]
-
-    svg = f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1180 610" width="1180" height="610">
+        svg = f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1180 610" width="1180" height="610">
   <defs>
     <style>
       @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&amp;display=swap');
@@ -168,7 +176,7 @@ def generate_banner(is_dark=True):
   <circle cx="64" cy="23" r="6" fill="#10B981"/>
   <text x="590" y="27" text-anchor="middle" fill="{label_color}" font-size="13" class="mono" font-weight="500">profile.sh --live</text>
 
-  <!-- LEFT PANEL: VISUAL.MAP (Floyd-Steinberg Dithered Portrait of Vibhansh Vats) -->
+  <!-- LEFT PANEL: VISUAL.MAP (Segmented Dithered Portrait of Vibhansh Vats) -->
   <g transform="translate(24, 60)">
     <rect x="0" y="0" width="420" height="524" rx="8" fill="{panel_bg}" stroke="{border_color}" stroke-width="1.5"/>
     
@@ -210,30 +218,33 @@ def generate_banner(is_dark=True):
     <line x1="0" y1="48" x2="686" y2="48" stroke="{border_color}" stroke-width="1"/>
 '''
 
-    y_start = 80
-    row_gap = 33
+        y_start = 80
+        row_gap = 33
 
-    for i, (label, val, color) in enumerate(rows):
-        y = y_start + i * row_gap
-        label_w = len(label) * 9.5 + 15
-        val_w = len(val) * 8.5 + 15
-        x1 = label_w
-        x2 = 686 - val_w
-        
-        svg += f'''    <text x="0" y="{y}" fill="{label_color}" font-size="14" class="mono" font-weight="500">{label}</text>
+        for i, (label, val, color) in enumerate(rows):
+            y = y_start + i * row_gap
+            label_w = len(label) * 9.5 + 15
+            val_w = len(val) * 8.5 + 15
+            x1 = label_w
+            x2 = 686 - val_w
+            
+            svg += f'''    <text x="0" y="{y}" fill="{label_color}" font-size="14" class="mono" font-weight="500">{label}</text>
     <line x1="{x1:.1f}" y1="{y-4}" x2="{x2:.1f}" y2="{y-4}" stroke="{dot_leader_color}" stroke-width="1.5" stroke-dasharray="2 4"/>
     <text x="686" y="{y}" text-anchor="end" fill="{color}" font-size="14" class="mono" font-weight="600" textLength="{len(val)*9.2:.1f}" lengthAdjust="spacingAndGlyphs">{val}</text>
 '''
 
-    svg += f'''  </g>
+        svg += f'''  </g>
 </svg>'''
-    return svg
+        return svg
 
-out_dir = r'C:\Users\Vibhansh Vats\.gemini\antigravity-ide\scratch\vatsvibhansh-cmd'
-with open(os.path.join(out_dir, 'dark.svg'), 'w', encoding='utf-8') as f:
-    f.write(generate_banner(True))
+    out_dir = r'C:\Users\Vibhansh Vats\.gemini\antigravity-ide\scratch\vatsvibhansh-cmd'
+    with open(os.path.join(out_dir, 'dark.svg'), 'w', encoding='utf-8') as f:
+        f.write(build_svg(True))
 
-with open(os.path.join(out_dir, 'light.svg'), 'w', encoding='utf-8') as f:
-    f.write(generate_banner(False))
+    with open(os.path.join(out_dir, 'light.svg'), 'w', encoding='utf-8') as f:
+        f.write(build_svg(False))
 
-print('SUCCESS_PORTRAIT_BANNER_GENERATED')
+    print('SEGMENTED_DITHER_BANNERS_GENERATED')
+
+if __name__ == '__main__':
+    generate_banners()
