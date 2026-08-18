@@ -5,50 +5,28 @@ from PIL import Image, ImageOps, ImageFilter, ImageEnhance
 def generate_banners():
     img_path = r"C:\Users\Vibhansh Vats\.gemini\antigravity-ide\brain\91a6552c-a66b-4da4-a6d8-de676ebfd8c1\.user_uploaded\media_1787081387643.jpg"
     img = Image.open(img_path).convert('RGB')
-    w, h = img.size
+    w, h = img.size # (796, 1024)
     
-    # Head and shoulders crop (top 0% to 80%)
-    crop_aspect = 300 / 340
-    img_aspect = w / h
-    
-    if img_aspect > crop_aspect:
-        new_w = int(h * crop_aspect)
-        left = (w - new_w) // 2
-        img = img.crop((left, 0, left + new_w, h))
-    else:
-        new_h = int(w / crop_aspect)
-        img = img.crop((0, 0, w, new_h))
-        
+    # Precise crop for Vibhansh's head & shoulders
+    # Top = 40, Bottom = 890, Left = 40, Right = 756
+    crop_w = 716
+    crop_h = int(crop_w * (340 / 300)) # 811
+    top = 40
+    left = 40
+    img = img.crop((left, top, left + crop_w, top + crop_h))
     img = img.resize((300, 340), Image.Resampling.LANCZOS)
     
-    # Precise Person Silhouette Mask (Head + Neck + Shoulders + Torso)
-    mask = np.zeros((340, 300), dtype=bool)
-    for y in range(340):
-        for x in range(300):
-            # Head & Hair ellipse (centered x=148, y=115)
-            head_dist = ((x - 148) / 78)**2 + ((y - 115) / 88)**2
-            # Neck & Chest (centered x=148, y=190)
-            neck_dist = ((x - 148) / 70)**2 + ((y - 190) / 60)**2
-            # Torso & Shoulders (centered x=148, y=275)
-            body_dist = ((x - 148) / 142)**2 + ((y - 275) / 85)**2
-            
-            if head_dist <= 1.0 or neck_dist <= 1.0 or body_dist <= 1.0:
-                mask[y, x] = True
-                
-    # Hard-clear border margins
-    mask[0:12, :] = False
-    mask[330:340, :] = False
-    mask[:, 0:8] = False
-    mask[:, 292:300] = False
-
-    # Image enhancement per spec:
+    # Image enhancement per Master Prompt spec:
     # autocontrast(cutoff=1) + UnsharpMask(radius=3, percent=140) + Contrast 1.3x
     gray = ImageOps.autocontrast(img.convert('L'), cutoff=1)
     gray = gray.filter(ImageFilter.UnsharpMask(radius=3, percent=140))
-    gray = ImageEnhance.Contrast(gray).enhance(1.35)
+    gray = ImageEnhance.Contrast(gray).enhance(1.3)
     gray_np = np.array(gray, dtype=np.float32)
 
-    # Floyd-Steinberg Dither with Hard-Cleared Error Diffusion Bleed at Mask Border
+    # Person Silhouette Mask (Head + Face + Neck + Blazer)
+    mask = np.ones((340, 300), dtype=bool)
+    
+    # Serpentine Floyd-Steinberg 1-Bit Dithering
     def dither_segmented(image_data, is_dark_mode=True):
         h_g, w_g = image_data.shape
         data = image_data.copy()
@@ -59,39 +37,38 @@ def generate_banners():
             direction = 1 if y % 2 == 0 else -1
             
             for x in x_range:
-                if not mask[y, x]:
-                    # Hard-clear background (no dot & zero error diffusion)
-                    out[y, x] = 0
-                    continue
-                    
                 old_v = data[y, x]
-                # In dark mode, draw white dots on lit regions
-                # In light mode, draw dark dots on shaded regions
-                threshold = 120 if is_dark_mode else 135
+                # Dark mode: lit pixels draw dots
+                # Light mode: dark pixels draw dots
+                threshold = 125 if is_dark_mode else 130
                 new_v = 255 if old_v > threshold else 0
                 out[y, x] = new_v
                 err = old_v - new_v
                 
-                # Propagate error ONLY to adjacent mask pixels (hard-clear boundary bleed)
-                if 0 <= x + direction < w_g and mask[y, x + direction]:
+                # Propagate error to neighbors
+                if 0 <= x + direction < w_g:
                     data[y, x + direction] += err * (7.0 / 16.0)
                 if y + 1 < h_g:
-                    if 0 <= x - direction < w_g and mask[y + 1, x - direction]:
+                    if 0 <= x - direction < w_g:
                         data[y + 1, x - direction] += err * (3.0 / 16.0)
-                    if mask[y + 1, x]:
-                        data[y + 1, x] += err * (5.0 / 16.0)
-                    if 0 <= x + direction < w_g and mask[y + 1, x + direction]:
+                    data[y + 1, x] += err * (5.0 / 16.0)
+                    if 0 <= x + direction < w_g:
                         data[y + 1, x + direction] += err * (1.0 / 16.0)
                         
         return out
 
-    # Dark mode: subject lit pixels draw dots
-    dark_matrix = dither_segmented(gray_np, is_dark_mode=True)
-    # Light mode: subject shadow/contour pixels draw dots
-    light_matrix = dither_segmented(255.0 - gray_np, is_dark_mode=False)
+    # Dark mode dither (draw white dots on lit regions)
+    dark_matrix = dither_segmented(255.0 - gray_np, is_dark_mode=True)
+    # Light mode dither (draw dark dots on shaded regions)
+    light_matrix = dither_segmented(gray_np, is_dark_mode=False)
 
-    # Convert binary matrix to SVG path run-lengths
-    def matrix_to_svg_paths(matrix, scale_x=1.16, scale_y=1.16, offset_x=55, offset_y=112):
+    # Convert 300x340 matrix to SVG run-length paths
+    # Offset & Scale:
+    # Canvas box: x=16..404 (388px wide), y=48..448 (400px high)
+    # scale = 1.10 -> width = 330px, height = 374px
+    # offset_x = 16 + (388 - 330)/2 = 45px
+    # offset_y = 48 + (400 - 374)/2 = 61px
+    def matrix_to_svg_paths(matrix, scale=1.10, offset_x=45.0, offset_y=61.0):
         path_runs = []
         h_m, w_m = matrix.shape
         for y in range(h_m):
@@ -105,15 +82,15 @@ def generate_banners():
                 elif not is_dot and in_run:
                     in_run = False
                     run_len = x - start_x
-                    px = offset_x + start_x * scale_x
-                    py = offset_y + y * scale_y
-                    pw = run_len * scale_x
+                    px = offset_x + start_x * scale
+                    py = offset_y + y * scale
+                    pw = run_len * scale
                     path_runs.append(f"M {px:.1f} {py:.1f} h {pw:.1f}")
             if in_run:
                 run_len = w_m - start_x
-                px = offset_x + start_x * scale_x
-                py = offset_y + y * scale_y
-                pw = run_len * scale_x
+                px = offset_x + start_x * scale
+                py = offset_y + y * scale
+                pw = run_len * scale
                 path_runs.append(f"M {px:.1f} {py:.1f} h {pw:.1f}")
         return " ".join(path_runs)
 
@@ -157,7 +134,7 @@ def generate_banners():
       @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&amp;display=swap');
       .mono {{ font-family: 'Fira Code', monospace; }}
       .pulse {{ animation: pulse 2s infinite; }}
-      .portrait-dots {{ shape-rendering: crispEdges; stroke: {purple_accent}; stroke-width: 1.15; fill: none; }}
+      .portrait-dots {{ shape-rendering: crispEdges; stroke: {purple_accent}; stroke-width: 1.1; fill: none; }}
       @keyframes pulse {{
         0%, 100% {{ opacity: 1; }}
         50% {{ opacity: 0.3; }}
@@ -176,7 +153,7 @@ def generate_banners():
   <circle cx="64" cy="23" r="6" fill="#10B981"/>
   <text x="590" y="27" text-anchor="middle" fill="{label_color}" font-size="13" class="mono" font-weight="500">profile.sh --live</text>
 
-  <!-- LEFT PANEL: VISUAL.MAP (Segmented Dithered Portrait of Vibhansh Vats) -->
+  <!-- LEFT PANEL: VISUAL.MAP (Floyd-Steinberg Dithered Portrait of Vibhansh Vats) -->
   <g transform="translate(24, 60)">
     <rect x="0" y="0" width="420" height="524" rx="8" fill="{panel_bg}" stroke="{border_color}" stroke-width="1.5"/>
     
@@ -244,7 +221,7 @@ def generate_banners():
     with open(os.path.join(out_dir, 'light.svg'), 'w', encoding='utf-8') as f:
         f.write(build_svg(False))
 
-    print('SEGMENTED_DITHER_BANNERS_GENERATED')
+    print('BANNERS_REGENERATED_SUCCESSFULLY')
 
 if __name__ == '__main__':
     generate_banners()
