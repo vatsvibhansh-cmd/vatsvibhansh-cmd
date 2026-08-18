@@ -30,12 +30,6 @@ def process_image(img_path):
     
     img_np = np.array(gray, dtype=np.float32)
     
-    # Simple background segmentation mask for dark mode
-    # Color distance check on original RGB image
-    rgb_np = np.array(img, dtype=np.float32)
-    # Background in photo is night sky / background elements (dark top, illuminated background)
-    # Face & shirt have clear skin tones and dark jacket
-    # Let's create foreground mask where face/hair/body is located
     h, w = img_np.shape
     mask = np.ones((h, w), dtype=bool)
     
@@ -65,10 +59,6 @@ def floyd_steinberg_dither_serpentine(arr, mask=None, invert=False):
             err = old_val - new_val
             
             # Error distribution (Floyd-Steinberg)
-            # (x + dir, y): 7/16
-            # (x - dir, y + 1): 3/16
-            # (x, y + 1): 5/16
-            # (x + dir, y + 1): 1/16
             if 0 <= x + direction < w:
                 img[y, x + direction] += err * (7.0 / 16.0)
             if y + 1 < h:
@@ -114,15 +104,20 @@ def dither_to_svg_paths(dither_matrix, scale_x=1.2, scale_y=1.2, offset_x=45, of
             
     return " ".join(path_runs)
 
-img_path = r"C:\Users\Vibhansh Vats\.gemini\antigravity-ide\brain\91a6552c-a66b-4da4-a6d8-de676ebfd8c1\.user_uploaded\media_1787081387643.jpg"
-gray_arr, mask = process_image(img_path)
+if __name__ == '__main__':
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    img_path = os.path.join(script_dir, 'assets', 'profile_photo.jpg')
+    if not os.path.exists(img_path):
+        img_path = r"C:\Users\Vibhansh Vats\.gemini\antigravity-ide\brain\91a6552c-a66b-4da4-a6d8-de676ebfd8c1\.user_uploaded\media_1787081387643.jpg"
 
-# Invert gray for dark mode so lit areas have high density / white dots
-dark_dither = floyd_steinberg_dither_serpentine(255 - gray_arr, mask=mask, invert=True)
-light_dither = floyd_steinberg_dither_serpentine(gray_arr, mask=None, invert=False)
+    gray_arr, mask = process_image(img_path)
 
-dark_path = dither_to_svg_paths(dark_dither, scale_x=1.2, scale_y=1.2, offset_x=36, offset_y=100, draw_white=True)
-light_path = dither_to_svg_paths(light_dither, scale_x=1.2, scale_y=1.2, offset_x=36, offset_y=100, draw_white=False)
+    # Invert gray for dark mode so lit areas have high density / white dots
+    dark_dither = floyd_steinberg_dither_serpentine(255 - gray_arr, mask=mask, invert=True)
+    light_dither = floyd_steinberg_dither_serpentine(gray_arr, mask=None, invert=False)
 
-print(f"Dark path runs length: {len(dark_path)}")
-print(f"Light path runs length: {len(light_path)}")
+    dark_path = dither_to_svg_paths(dark_dither, scale_x=1.2, scale_y=1.2, offset_x=36, offset_y=100, draw_white=True)
+    light_path = dither_to_svg_paths(light_dither, scale_x=1.2, scale_y=1.2, offset_x=36, offset_y=100, draw_white=False)
+
+    print(f"Dark path runs length: {len(dark_path)}")
+    print(f"Light path runs length: {len(light_path)}")

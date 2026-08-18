@@ -3,12 +3,21 @@ import numpy as np
 from PIL import Image, ImageOps, ImageFilter, ImageEnhance
 
 def generate_banners():
-    img_path = r"C:\Users\Vibhansh Vats\.gemini\antigravity-ide\brain\91a6552c-a66b-4da4-a6d8-de676ebfd8c1\.user_uploaded\media_1787081387643.jpg"
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    img_path = os.path.join(script_dir, 'assets', 'profile_photo.jpg')
+    
+    # Fallback to absolute path if not found in assets
+    if not os.path.exists(img_path):
+        fallback = r"C:\Users\Vibhansh Vats\.gemini\antigravity-ide\brain\91a6552c-a66b-4da4-a6d8-de676ebfd8c1\.user_uploaded\media_1787081387643.jpg"
+        if os.path.exists(fallback):
+            img_path = fallback
+        else:
+            raise FileNotFoundError(f"Image not found at {img_path} or {fallback}")
+
     img = Image.open(img_path).convert('RGB')
     w, h = img.size # (796, 1024)
     
     # Precise crop for Vibhansh's head & shoulders
-    # Top = 40, Bottom = 890, Left = 40, Right = 756
     crop_w = 716
     crop_h = int(crop_w * (340 / 300)) # 811
     top = 40
@@ -23,9 +32,6 @@ def generate_banners():
     gray = ImageEnhance.Contrast(gray).enhance(1.3)
     gray_np = np.array(gray, dtype=np.float32)
 
-    # Person Silhouette Mask (Head + Face + Neck + Blazer)
-    mask = np.ones((340, 300), dtype=bool)
-    
     # Serpentine Floyd-Steinberg 1-Bit Dithering
     def dither_segmented(image_data, is_dark_mode=True):
         h_g, w_g = image_data.shape
@@ -57,13 +63,12 @@ def generate_banners():
                         
         return out
 
-    # Dark mode dither (draw white dots on lit regions)
+    # Dark mode dither (draw dots on lit regions)
     dark_matrix = dither_segmented(255.0 - gray_np, is_dark_mode=True)
-    # Light mode dither (draw dark dots on shaded regions)
+    # Light mode dither (draw dots on shaded regions)
     light_matrix = dither_segmented(gray_np, is_dark_mode=False)
 
     # Convert 300x340 matrix to SVG run-length paths
-    # Offset & Scale:
     # Canvas box: x=16..404 (388px wide), y=48..448 (400px high)
     # scale = 1.10 -> width = 330px, height = 374px
     # offset_x = 16 + (388 - 330)/2 = 45px
@@ -168,7 +173,7 @@ def generate_banners():
     <!-- Dithered Vector Portrait Run-Length Path -->
     <path d="{portrait_path}" class="portrait-dots"/>
 
-    <!-- Overlay Corner HUD Brackets -->
+    <!-- Overlay HUD Brackets -->
     <path d="M 22 60 L 22 75 M 22 60 L 37 60" stroke="{chrome_color}" stroke-width="1.5" fill="none"/>
     <path d="M 398 60 L 398 75 M 398 60 L 383 60" stroke="{chrome_color}" stroke-width="1.5" fill="none"/>
     <path d="M 22 436 L 22 421 M 22 436 L 37 436" stroke="{chrome_color}" stroke-width="1.5" fill="none"/>
@@ -214,7 +219,7 @@ def generate_banners():
 </svg>'''
         return svg
 
-    out_dir = r'C:\Users\Vibhansh Vats\.gemini\antigravity-ide\scratch\vatsvibhansh-cmd'
+    out_dir = script_dir
     with open(os.path.join(out_dir, 'dark.svg'), 'w', encoding='utf-8') as f:
         f.write(build_svg(True))
 
