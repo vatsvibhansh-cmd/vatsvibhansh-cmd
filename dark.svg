@@ -1,0 +1,149 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1180 610" width="1180" height="610">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&amp;display=swap');
+      .mono { font-family: 'Fira Code', monospace; }
+      .pulse { animation: pulse 2s infinite; }
+      .glow { filter: drop-shadow(0px 0px 6px #A78BFA80); }
+      .flow-line { stroke-dasharray: 8 8; animation: dash 20s linear infinite; }
+      @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.3; }
+      }
+      @keyframes dash {
+        to { stroke-dashoffset: -1000; }
+      }
+    </style>
+    <linearGradient id="panelGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#A78BFA" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#22D3EE" stop-opacity="0.05"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Terminal Container Background -->
+  <rect x="0" y="0" width="1180" height="610" rx="12" fill="#0A101F"/>
+  <rect x="2" y="2" width="1176" height="606" rx="10" fill="#0D1527" stroke="#1E293B" stroke-width="2"/>
+
+  <!-- Titlebar -->
+  <rect x="2" y="2" width="1176" height="42" rx="10" fill="#070D18"/>
+  <circle cx="24" cy="23" r="6" fill="#EF4444"/>
+  <circle cx="44" cy="23" r="6" fill="#F59E0B"/>
+  <circle cx="64" cy="23" r="6" fill="#10B981"/>
+  <text x="590" y="27" text-anchor="middle" fill="#94A3B8" font-size="13" class="mono" font-weight="500">profile.sh --live</text>
+
+  <!-- LEFT PANEL: VISUAL.MAP (Data Science & ML Matrix Topology) -->
+  <g transform="translate(24, 60)">
+    <rect x="0" y="0" width="420" height="524" rx="8" fill="#070D18" stroke="#1E293B" stroke-width="1.5"/>
+    
+    <!-- Panel Header -->
+    <text x="20" y="32" fill="#22D3EE" font-size="13" class="mono" font-weight="700">VISUAL.MAP</text>
+    <rect x="115" y="18" width="160" height="20" rx="10" fill="#A78BFA20"/>
+    <text x="195" y="32" text-anchor="middle" fill="#A78BFA" font-size="11" class="mono" font-weight="600">DS.NEURAL_MATRIX</text>
+
+    <!-- Visual Canvas Area -->
+    <rect x="16" y="48" width="388" height="400" rx="6" fill="#0A101F" stroke="#1E293B" stroke-width="1"/>
+    
+    <!-- Matrix Grid Lines -->
+    <path d="M 16 128 L 404 128 M 16 208 L 404 208 M 16 288 L 404 288 M 16 368 L 404 368" stroke="#1E293B" stroke-width="1" stroke-dasharray="4 4"/>
+    <path d="M 93 48 L 93 448 M 170 48 L 170 448 M 247 48 L 247 448 M 324 48 L 324 448" stroke="#1E293B" stroke-width="1" stroke-dasharray="4 4"/>
+
+    <!-- Neural Network Graph & Data Nodes -->
+    <path d="M 65 140 Q 150 90 210 180 T 350 120" fill="none" stroke="#A78BFA" stroke-width="2" class="flow-line" opacity="0.8"/>
+    <path d="M 65 240 Q 140 320 220 220 T 350 310" fill="none" stroke="#22D3EE" stroke-width="2" class="flow-line" opacity="0.8"/>
+    <path d="M 65 340 Q 180 200 240 340 T 350 220" fill="none" stroke="#10B981" stroke-width="2" class="flow-line" opacity="0.7"/>
+
+    <!-- Scatter Plot / Dither Cluster Points -->
+    <g class="glow">
+      <circle cx="65" cy="140" r="7" fill="#A78BFA"/>
+      <circle cx="65" cy="240" r="7" fill="#22D3EE"/>
+      <circle cx="65" cy="340" r="7" fill="#10B981"/>
+      
+      <circle cx="170" cy="100" r="6" fill="#22D3EE"/>
+      <circle cx="170" cy="200" r="6" fill="#A78BFA"/>
+      <circle cx="170" cy="300" r="6" fill="#10B981"/>
+      <circle cx="170" cy="390" r="6" fill="#22D3EE"/>
+
+      <circle cx="260" cy="130" r="6" fill="#10B981"/>
+      <circle cx="260" cy="230" r="6" fill="#22D3EE"/>
+      <circle cx="260" cy="330" r="6" fill="#A78BFA"/>
+
+      <circle cx="350" cy="120" r="8" fill="#A78BFA"/>
+      <circle cx="350" cy="220" r="8" fill="#10B981"/>
+      <circle cx="350" cy="310" r="8" fill="#22D3EE"/>
+    </g>
+
+    <!-- Data Stream Particles -->
+    <circle cx="115" cy="115" r="3" fill="#A78BFA" class="pulse"/>
+    <circle cx="215" cy="165" r="3" fill="#22D3EE" class="pulse"/>
+    <circle cx="305" cy="175" r="3" fill="#10B981" class="pulse"/>
+    <circle cx="120" cy="275" r="3" fill="#10B981" class="pulse"/>
+
+    <!-- Training Loss Curve overlay -->
+    <path d="M 26 430 C 100 420 150 380 220 370 C 300 360 350 355 394 352 L 394 440 L 26 440 Z" fill="url(#panelGrad)" opacity="0.6"/>
+    <path d="M 26 430 C 100 420 150 380 220 370 C 300 360 350 355 394 352" fill="none" stroke="#10B981" stroke-width="2"/>
+    <text x="35" y="420" fill="#10B981" font-size="10" class="mono" font-weight="600">loss: 0.0031</text>
+    <text x="310" y="370" fill="#A78BFA" font-size="10" class="mono" font-weight="600">acc: 99.4%</text>
+
+    <!-- Bottom Metrics Bar inside Left Panel -->
+    <rect x="16" y="460" width="388" height="48" rx="6" fill="#0A101F" stroke="#1E293B" stroke-width="1"/>
+    <text x="30" y="480" fill="#94A3B8" font-size="11" class="mono">MODEL: Transformer / GNN</text>
+    <text x="30" y="496" fill="#22D3EE" font-size="11" class="mono">PARAMS: 17.4M · EPOCH: 500</text>
+    <rect x="300" y="472" width="90" height="24" rx="12" fill="#10B98120" stroke="#10B981" stroke-width="1"/>
+    <text x="345" y="488" text-anchor="middle" fill="#10B981" font-size="11" class="mono" font-weight="700">OPTIMAL</text>
+  </g>
+
+  <!-- RIGHT PANEL: SYSTEM.INFO Readout -->
+  <g transform="translate(470, 60)">
+    <text x="0" y="32" fill="#22D3EE" font-size="14" class="mono" font-weight="700">SYSTEM.INFO</text>
+    
+    <circle cx="125" cy="27" r="5" fill="#10B981" class="pulse"/>
+    <text x="136" y="31" fill="#10B981" font-size="12" class="mono" font-weight="700">LIVE</text>
+
+    <rect x="520" y="10" width="166" height="28" rx="14" fill="#070D18" stroke="#22D3EE" stroke-width="1.5"/>
+    <text x="603" y="29" text-anchor="middle" fill="#22D3EE" font-size="13" class="mono" font-weight="600">@vatsvibhansh-cmd</text>
+
+    <line x1="0" y1="48" x2="686" y2="48" stroke="#1E293B" stroke-width="1"/>
+    <text x="0" y="80" fill="#94A3B8" font-size="14" class="mono" font-weight="500">Subject</text>
+    <line x1="81.5" y1="76" x2="560.5" y2="76" stroke="#1E293B" stroke-width="1.5" stroke-dasharray="2 4"/>
+    <text x="686" y="80" text-anchor="end" fill="#F8FAFC" font-size="14" class="mono" font-weight="600" textLength="119.6" lengthAdjust="spacingAndGlyphs">Vibhansh Vats</text>
+    <text x="0" y="113" fill="#94A3B8" font-size="14" class="mono" font-weight="500">Role</text>
+    <line x1="53.0" y1="109" x2="433.0" y2="109" stroke="#1E293B" stroke-width="1.5" stroke-dasharray="2 4"/>
+    <text x="686" y="113" text-anchor="end" fill="#A78BFA" font-size="14" class="mono" font-weight="600" textLength="257.6" lengthAdjust="spacingAndGlyphs">Data Scientist & ML Engineer</text>
+    <text x="0" y="146" fill="#94A3B8" font-size="14" class="mono" font-weight="500">Origin</text>
+    <line x1="72.0" y1="142" x2="628.5" y2="142" stroke="#1E293B" stroke-width="1.5" stroke-dasharray="2 4"/>
+    <text x="686" y="146" text-anchor="end" fill="#F8FAFC" font-size="14" class="mono" font-weight="600" textLength="46.0" lengthAdjust="spacingAndGlyphs">India</text>
+    <text x="0" y="179" fill="#94A3B8" font-size="14" class="mono" font-weight="500">Education</text>
+    <line x1="100.5" y1="175" x2="390.5" y2="175" stroke="#1E293B" stroke-width="1.5" stroke-dasharray="2 4"/>
+    <text x="686" y="179" text-anchor="end" fill="#F8FAFC" font-size="14" class="mono" font-weight="600" textLength="303.6" lengthAdjust="spacingAndGlyphs">Computer Science & Data Analytics</text>
+    <text x="0" y="212" fill="#94A3B8" font-size="14" class="mono" font-weight="500">Status</text>
+    <line x1="72.0" y1="208" x2="280.0" y2="208" stroke="#1E293B" stroke-width="1.5" stroke-dasharray="2 4"/>
+    <text x="686" y="212" text-anchor="end" fill="#10B981" font-size="14" class="mono" font-weight="600" textLength="423.2" lengthAdjust="spacingAndGlyphs">Training Models + Analyzing Data + Shipping AI</text>
+    <text x="0" y="245" fill="#94A3B8" font-size="14" class="mono" font-weight="500">ToolChain</text>
+    <line x1="100.5" y1="241" x2="271.5" y2="241" stroke="#1E293B" stroke-width="1.5" stroke-dasharray="2 4"/>
+    <text x="686" y="245" text-anchor="end" fill="#22D3EE" font-size="14" class="mono" font-weight="600" textLength="432.4" lengthAdjust="spacingAndGlyphs">Python · PyTorch · Scikit-Learn · SQL · Jupyter</text>
+    <text x="0" y="278" fill="#94A3B8" font-size="14" class="mono" font-weight="500">Core.Lang</text>
+    <line x1="100.5" y1="274" x2="416.0" y2="274" stroke="#1E293B" stroke-width="1.5" stroke-dasharray="2 4"/>
+    <text x="686" y="278" text-anchor="end" fill="#F8FAFC" font-size="14" class="mono" font-weight="600" textLength="276.0" lengthAdjust="spacingAndGlyphs">Python · SQL · R · C++ · Julia</text>
+    <text x="0" y="311" fill="#94A3B8" font-size="14" class="mono" font-weight="500">Core.ML</text>
+    <line x1="81.5" y1="307" x2="288.5" y2="307" stroke="#1E293B" stroke-width="1.5" stroke-dasharray="2 4"/>
+    <text x="686" y="311" text-anchor="end" fill="#A78BFA" font-size="14" class="mono" font-weight="600" textLength="414.0" lengthAdjust="spacingAndGlyphs">PyTorch · TensorFlow · Scikit-Learn · XGBoost</text>
+    <text x="0" y="344" fill="#94A3B8" font-size="14" class="mono" font-weight="500">Core.Data</text>
+    <line x1="100.5" y1="340" x2="356.5" y2="340" stroke="#1E293B" stroke-width="1.5" stroke-dasharray="2 4"/>
+    <text x="686" y="344" text-anchor="end" fill="#F8FAFC" font-size="14" class="mono" font-weight="600" textLength="340.4" lengthAdjust="spacingAndGlyphs">Pandas · NumPy · SciPy · Apache Spark</text>
+    <text x="0" y="377" fill="#94A3B8" font-size="14" class="mono" font-weight="500">Core.Viz</text>
+    <line x1="91.0" y1="373" x2="339.5" y2="373" stroke="#1E293B" stroke-width="1.5" stroke-dasharray="2 4"/>
+    <text x="686" y="377" text-anchor="end" fill="#22D3EE" font-size="14" class="mono" font-weight="600" textLength="358.8" lengthAdjust="spacingAndGlyphs">Matplotlib · Seaborn · Plotly · Tableau</text>
+    <text x="0" y="410" fill="#94A3B8" font-size="14" class="mono" font-weight="500">Grid.Mail</text>
+    <line x1="100.5" y1="406" x2="484.0" y2="406" stroke="#1E293B" stroke-width="1.5" stroke-dasharray="2 4"/>
+    <text x="686" y="410" text-anchor="end" fill="#F8FAFC" font-size="14" class="mono" font-weight="600" textLength="202.4" lengthAdjust="spacingAndGlyphs">vatsvibhansh@gmail.com</text>
+    <text x="0" y="443" fill="#94A3B8" font-size="14" class="mono" font-weight="500">Grid.Portfolio</text>
+    <line x1="148.0" y1="439" x2="441.5" y2="439" stroke="#1E293B" stroke-width="1.5" stroke-dasharray="2 4"/>
+    <text x="686" y="443" text-anchor="end" fill="#F8FAFC" font-size="14" class="mono" font-weight="600" textLength="248.4" lengthAdjust="spacingAndGlyphs">github.com/vatsvibhansh-cmd</text>
+    <text x="0" y="476" fill="#94A3B8" font-size="14" class="mono" font-weight="500">Grid.LinkedIn</text>
+    <line x1="138.5" y1="472" x2="339.5" y2="472" stroke="#1E293B" stroke-width="1.5" stroke-dasharray="2 4"/>
+    <text x="686" y="476" text-anchor="end" fill="#22D3EE" font-size="14" class="mono" font-weight="600" textLength="358.8" lengthAdjust="spacingAndGlyphs">linkedin.com/in/vibhansh-vats-729935279</text>
+    <text x="0" y="509" fill="#94A3B8" font-size="14" class="mono" font-weight="500">Grid.GitHub</text>
+    <line x1="119.5" y1="505" x2="441.5" y2="505" stroke="#1E293B" stroke-width="1.5" stroke-dasharray="2 4"/>
+    <text x="686" y="509" text-anchor="end" fill="#A78BFA" font-size="14" class="mono" font-weight="600" textLength="248.4" lengthAdjust="spacingAndGlyphs">github.com/vatsvibhansh-cmd</text>
+  </g>
+</svg>
